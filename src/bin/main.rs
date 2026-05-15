@@ -12,9 +12,11 @@ use embassy_time::{Duration, Timer};
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
 use memory_game::game::{GameObject};
+use esp_println::{println};
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
+    println!("PANIC!");
     loop {}
 }
 
@@ -50,6 +52,8 @@ async fn main(spawner: Spawner) -> ! {
 
     game.reset().await;
     game.display_stage().await;
+    game.set_display_fail().await;
+    game.set_display_success().await;
 
     loop {
         Timer::after(Duration::from_secs(1)).await;

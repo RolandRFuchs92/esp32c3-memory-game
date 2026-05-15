@@ -5,13 +5,13 @@ use esp_println::{println};
 
 pub enum Gpios {
     Red = 0,
-    Blue = 1,
-    Green = 2,
+    Green = 1,
+    Blue = 2,
     Yellow = 3
 }
 
 pub struct GameObject  {
-    outputs_arr: [Output<'static>; 4],
+    led_arr: [Output<'static>; 4],
     stage: u8,
     player_index: u8,
     is_buttons_locked: bool,
@@ -34,7 +34,7 @@ impl GameObject {
         let yellow = Output::new(yellow_gpio, Level::Low, OutputConfig::default());
 
         Self {
-            outputs_arr: [
+            led_arr: [
                 red,
                 green,
                 blue,
@@ -56,9 +56,27 @@ impl GameObject {
        self.set_display_scroll().await;
     }
 
+    pub async fn set_display_fail(self: &mut Self) {
+        for _ in 0..3 {
+            self.led_arr[Gpios::Red as usize].set_high();
+            Timer::after_millis(500).await;
+            self.led_arr[Gpios::Red as usize].set_low();
+            Timer::after_millis(500).await;
+        }
+    }
+
+    pub async fn set_display_success(self: &mut Self) {
+        for _ in 0..3 {
+            self.led_arr[Gpios::Green as usize].set_high();
+            Timer::after_millis(500).await;
+            self.led_arr[Gpios::Green as usize].set_low();
+            Timer::after_millis(500).await;
+        }
+    }
+
     async fn set_display_scroll(self: &mut Self) {
        for _ in 0..3 {
-            for o in &mut self.outputs_arr {
+            for o in &mut self.led_arr {
                 o.set_high();
                 Timer::after_millis(250).await;
                 o.set_low();
@@ -68,12 +86,12 @@ impl GameObject {
 
     async fn set_display_strobe(self: &mut Self){
        for _ in 0..3 {
-            for o in &mut self.outputs_arr {
+            for o in &mut self.led_arr {
                 o.set_high();
             }
             Timer::after_millis(500).await;
 
-            for o in &mut self.outputs_arr {
+            for o in &mut self.led_arr {
                 o.set_low();
             }
             Timer::after_millis(500).await;
@@ -82,7 +100,7 @@ impl GameObject {
 
     fn set_display_off(self: &mut Self){
         for led_index in 0..3 {
-            self.outputs_arr[led_index as usize].set_low();
+            self.led_arr[led_index as usize].set_low();
         }
     }
 
@@ -93,8 +111,8 @@ impl GameObject {
         self.set_display_off();
 
         for sequence in 0..(self.stage + 3) {
-            let random_led_index = rng.random() as u8 % 5;
-            let led = &mut self.outputs_arr[random_led_index as usize];
+            let random_led_index = rng.random() as u8 % 4;
+            let led = &mut self.led_arr[random_led_index as usize];
             self.game_sequence[sequence as usize] = random_led_index;
             led.set_high();
             Timer::after_millis(500).await;
