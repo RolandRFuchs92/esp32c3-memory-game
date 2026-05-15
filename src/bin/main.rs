@@ -42,13 +42,14 @@ async fn main(spawner: Spawner) -> ! {
     // TODO: Spawn some tasks
     let _ = spawner;
     let mut game = GameObject::new(
-       peripherals.GPIO7, 
-       peripherals.GPIO6, 
-       peripherals.GPIO5, 
-       peripherals.GPIO4, 
+       peripherals.GPIO7,
+       peripherals.GPIO6,
+       peripherals.GPIO5,
+       peripherals.GPIO4,
     );
 
     game.reset().await;
+    game.display_stage().await;
 
     loop {
         Timer::after(Duration::from_secs(1)).await;
