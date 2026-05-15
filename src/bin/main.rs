@@ -11,7 +11,7 @@ use embassy_executor::{Spawner};
 use embassy_time::{Duration, Timer};
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
-use memory_game::game::{GameObject};
+use memory_game::game::{GameObject, IoLedMap, IoBtnMap};
 use esp_println::{println};
 
 #[panic_handler]
@@ -42,18 +42,25 @@ async fn main(spawner: Spawner) -> ! {
     esp_rtos::start(timg0.timer0, sw_interrupt.software_interrupt0);
 
     // TODO: Spawn some tasks
-    let _ = spawner;
     let mut game = GameObject::new(
-       peripherals.GPIO7,
-       peripherals.GPIO6,
-       peripherals.GPIO5,
-       peripherals.GPIO4,
+         IoLedMap {
+            red: peripherals.GPIO7,
+            green: peripherals.GPIO6,
+            blue: peripherals.GPIO5,
+            yellow: peripherals.GPIO4,
+        },
+        IoBtnMap {
+            red: peripherals.GPIO1,
+            green: peripherals.GPIO3,
+            blue: peripherals.GPIO2,
+            yellow: peripherals.GPIO8,
+        }
     );
 
     game.reset().await;
     game.display_stage().await;
-    game.set_display_fail().await;
-    game.set_display_success().await;
+    
+    spawner.spawn(game.handle_button_press(0));
 
     loop {
         Timer::after(Duration::from_secs(1)).await;
