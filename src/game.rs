@@ -1,177 +1,201 @@
-use esp_hal::gpio::{Output, Level, OutputConfig, Input, InputConfig, Pull};
-use embassy_time::{Timer};
-use esp_hal::rng::{Rng};
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::channel::Channel;
+use embassy_time::Timer;
+use esp_hal::gpio::{Input, InputConfig, Level, Output, OutputConfig, Pull};
+use esp_hal::rng::Rng;
+use esp_println::println;
 
-pub enum GpioIndexs {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum GpioIndex {
     Red = 0,
     Green = 1,
     Blue = 2,
-    Yellow = 3
-}
-
-pub struct GameObject  {
-    io_arr: [IoPair ;4],
-    stage: u8,
-    player_index: u8,
-    is_buttons_locked: bool,
-    player_sequence: [u8; 10],
-    game_sequence: [u8; 10]
+    Yellow = 3,
 }
 
 pub struct IoLedMap {
     pub red: esp_hal::peripherals::GPIO7<'static>,
     pub green: esp_hal::peripherals::GPIO6<'static>,
     pub blue: esp_hal::peripherals::GPIO5<'static>,
-    pub yellow: esp_hal::peripherals::GPIO4<'static>
+    pub yellow: esp_hal::peripherals::GPIO4<'static>,
 }
 
 pub struct IoBtnMap {
     pub red: esp_hal::peripherals::GPIO1<'static>,
     pub green: esp_hal::peripherals::GPIO3<'static>,
     pub blue: esp_hal::peripherals::GPIO2<'static>,
-    pub yellow: esp_hal::peripherals::GPIO8<'static>
+    pub yellow: esp_hal::peripherals::GPIO8<'static>,
 }
 
-pub struct IoPair {
-    led: esp_hal::gpio::Output<'static>,
-    btn: esp_hal::gpio::Input<'static>
+#[derive(Clone, Copy)]
+pub enum BtnEvent {
+    Pressed(GpioIndex),
+}
+
+pub static BTN_EVENTS: Channel<CriticalSectionRawMutex, BtnEvent, 8> = Channel::new();
+
+#[embassy_executor::task(pool_size = 4)]
+pub async fn button_task(mut btn: Input<'static>, which: GpioIndex) {
+    loop {
+        btn.wait_for_falling_edge().await;
+        BTN_EVENTS.send(BtnEvent::Pressed(which)).await;
+        Timer::after_millis(20).await;
+        btn.wait_for_rising_edge().await;
+        Timer::after_millis(20).await;
+    }
+}
+
+pub fn build_button_inputs(btns: IoBtnMap) -> [Input<'static>; 4] {
+    let cfg = InputConfig::default().with_pull(Pull::Up);
+    [
+        Input::new(btns.red, cfg),
+        Input::new(btns.green, cfg),
+        Input::new(btns.blue, cfg),
+        Input::new(btns.yellow, cfg),
+    ]
+}
+
+pub struct GameObject {
+    leds: [Output<'static>; 4],
+    stage: u8,
+    player_index: u8,
+    game_sequence: [u8; 10],
+    player_sequence: [u8; 10],
 }
 
 impl GameObject {
-    pub fn new(
-        leds: IoLedMap,
-        btns: IoBtnMap
-    ) -> Self {
-
-        let red_led = Output::new(leds.red, Level::Low, OutputConfig::default());
-        let green_led = Output::new(leds.green, Level::Low, OutputConfig::default());
-        let blue_led = Output::new(leds.blue, Level::Low, OutputConfig::default());
-        let yellow_led = Output::new(leds.yellow, Level::Low, OutputConfig::default());
-
-        let red_btn = Input::new(btns.red, InputConfig::default().with_pull(Pull::Up));
-        let green_btn = Input::new(btns.green, InputConfig::default().with_pull(Pull::Up));
-        let blue_btn = Input::new(btns.blue, InputConfig::default().with_pull(Pull::Up));
-        let yellow_btn = Input::new(btns.yellow, InputConfig::default().with_pull(Pull::Up));
-
+    pub fn new(leds: IoLedMap) -> Self {
+        let cfg = OutputConfig::default();
         Self {
-            io_arr: [
-                IoPair {
-                    led: red_led,
-                    btn: red_btn
-                },
-                IoPair {
-                    led: green_led,
-                    btn: green_btn
-                }, 
-                IoPair {
-                    led: blue_led,
-                    btn: blue_btn
-                },
-                IoPair {
-                    led: yellow_led,
-                    btn: yellow_btn
-                },
+            leds: [
+                Output::new(leds.red, Level::Low, cfg),
+                Output::new(leds.green, Level::Low, cfg),
+                Output::new(leds.blue, Level::Low, cfg),
+                Output::new(leds.yellow, Level::Low, cfg),
             ],
             stage: 0,
-            is_buttons_locked: true,
             player_index: 0,
-            player_sequence: [0; 10],
             game_sequence: [0; 10],
+            player_sequence: [0; 10],
         }
     }
 
-    pub async fn reset(self: &mut Self) {
-       self.stage = 0;
-       self.player_index = 0;
-       self.set_display_off();
-       self.set_display_strobe().await;
-       self.set_display_scroll().await;
-    }
-
-    pub async fn set_display_fail(self: &mut Self) {
-        for _ in 0..self.io_arr.len() {
-            self.io_arr[GpioIndexs::Red as usize].led.set_high();
-            Timer::after_millis(500).await;
-            self.io_arr[GpioIndexs::Red as usize].led.set_low();
-            Timer::after_millis(500).await;
-        }
-    }
-
-    pub async fn set_display_success(self: &mut Self) {
-        for _ in 0..3 {
-            self.io_arr[GpioIndexs::Green as usize].led.set_high();
-            Timer::after_millis(500).await;
-            self.io_arr[GpioIndexs::Green as usize].led.set_low();
-            Timer::after_millis(500).await;
-        }
-    }
-
-    async fn set_display_scroll(self: &mut Self) {
-       for _ in 0..3 {
-            for o in &mut self.io_arr {
-                o.led.set_high();
-                Timer::after_millis(250).await;
-                o.led.set_low();
-            }
-       }
-    }
-
-    async fn set_display_blink(self: &mut Self){
-            for o in &mut self.io_arr {
-                o.led.set_high();
-            }
-            Timer::after_millis(500).await;
-
-            for o in &mut self.io_arr {
-                o.led.set_low();
-            }
-            Timer::after_millis(500).await;
-    }
-
-    async fn set_display_strobe(self: &mut Self){
-       for _ in 0..self.io_arr.len() {
-           self.set_display_blink().await;
-        }
-    }
-
-    fn set_display_off(self: &mut Self){
-        for led_index in 0..self.io_arr.len() {
-            self.io_arr[led_index as usize].led.set_low();
-        }
-    }
-
-    pub async fn display_stage(self: &mut Self) {
-        let rng = Rng::new();
-
-        self.is_buttons_locked = true;
+    pub async fn reset(&mut self) {
+        self.stage = 0;
+        self.player_index = 0;
         self.set_display_off();
+        self.set_display_strobe().await;
+        self.set_display_scroll().await;
+    }
 
+    pub async fn set_display_fail(&mut self) {
+        for _ in 0..3 {
+            self.leds[GpioIndex::Red as usize].set_high();
+            Timer::after_millis(500).await;
+            self.leds[GpioIndex::Red as usize].set_low();
+            Timer::after_millis(500).await;
+        }
+    }
+
+    pub async fn set_display_success(&mut self) {
+        for _ in 0..3 {
+            self.leds[GpioIndex::Green as usize].set_high();
+            Timer::after_millis(500).await;
+            self.leds[GpioIndex::Green as usize].set_low();
+            Timer::after_millis(500).await;
+        }
+    }
+
+    async fn set_display_scroll(&mut self) {
+        for _ in 0..3 {
+            for led in &mut self.leds {
+                led.set_high();
+                Timer::after_millis(250).await;
+                led.set_low();
+            }
+        }
+    }
+
+    async fn set_display_blink(&mut self) {
+        for led in &mut self.leds {
+            led.set_high();
+        }
+        Timer::after_millis(500).await;
+        for led in &mut self.leds {
+            led.set_low();
+        }
+        Timer::after_millis(500).await;
+    }
+
+    async fn set_display_strobe(&mut self) {
+        for _ in 0..3 {
+            self.set_display_blink().await;
+        }
+    }
+
+    fn set_display_off(&mut self) {
+        for led in &mut self.leds {
+            led.set_low();
+        }
+    }
+
+    pub async fn display_stage(&mut self) {
+        let rng = Rng::new();
+        self.set_display_off();
         self.set_display_blink().await;
 
         for sequence in 0..(self.stage + 3) {
-            let random_led_index = rng.random() as u8 % 4;
-            let io = &mut self.io_arr[random_led_index as usize];
+            let random_led_index = (rng.random() as u8) % 4;
             self.game_sequence[sequence as usize] = random_led_index;
-            io.led.set_high();
+            let led = &mut self.leds[random_led_index as usize];
+            led.set_high();
             Timer::after_millis(500).await;
-            io.led.set_low();
+            led.set_low();
             Timer::after_millis(200).await;
         }
-        
+
         self.set_display_blink().await;
-        self.is_buttons_locked = false;
     }
 
-    pub async fn handle_button_press(self: &mut Self, io_index: GpioIndexs){
-        let io = &mut self.io_arr[io_index as usize];
-
+    pub async fn run(&mut self) -> ! {
         loop {
-            io.btn.wait_for_falling_edge().await;
-            io.led.set_high();
-
-            io.btn.wait_for_rising_edge().await;
-            io.led.set_low();
+            self.reset().await;
+            loop {
+                self.display_stage().await;
+                if !self.read_player_sequence().await {
+                    self.set_display_fail().await;
+                    break;
+                }
+                self.set_display_success().await;
+                self.stage += 1;
+                if self.stage as usize >= self.game_sequence.len() {
+                    self.set_display_success().await;
+                    break;
+                }
+            }
         }
-        
+    }
+
+    async fn read_player_sequence(&mut self) -> bool {
+        self.player_index = 0;
+        let count = self.stage + 3;
+        while self.player_index < count {
+            let BtnEvent::Pressed(which) = BTN_EVENTS.receive().await;
+            let expected = self.game_sequence[self.player_index as usize];
+            let pressed = which as u8;
+
+            let led = &mut self.leds[pressed as usize];
+            led.set_high();
+            Timer::after_millis(150).await;
+            led.set_low();
+
+            if pressed != expected {
+                println!("wrong press: got {} expected {}\r", pressed, expected);
+                return false;
+            }
+            self.player_sequence[self.player_index as usize] = pressed;
+            self.player_index += 1;
+        }
+        true
     }
 }

@@ -73,7 +73,7 @@
     {
       "type": "wokwi-pushbutton-6mm",
       "id": "btn1",
-      "top": -171.8,
+      "top": -162.2,
       "left": -101.6,
       "rotate": 90,
       "attrs": { "color": "red", "xray": "1" }
@@ -81,7 +81,7 @@
     {
       "type": "wokwi-pushbutton-6mm",
       "id": "btn2",
-      "top": -171.8,
+      "top": -162.2,
       "left": -63.2,
       "rotate": 90,
       "attrs": { "color": "green", "xray": "1" }
@@ -89,7 +89,7 @@
     {
       "type": "wokwi-pushbutton-6mm",
       "id": "btn3",
-      "top": -171.8,
+      "top": -162.2,
       "left": -24.8,
       "rotate": 90,
       "attrs": { "color": "blue", "xray": "1" }
@@ -97,7 +97,7 @@
     {
       "type": "wokwi-pushbutton-6mm",
       "id": "btn4",
-      "top": -171.8,
+      "top": -162.2,
       "left": 13.6,
       "rotate": 90,
       "attrs": { "color": "yellow", "xray": "1" }
@@ -123,14 +123,6 @@
     [ "esp:3", "bb1:5t.e", "green", [ "h0" ] ],
     [ "esp:2", "bb1:9t.e", "blue", [ "h-9.6", "v-76.8", "h28.8" ] ],
     [ "esp:8", "bb1:13t.e", "gold", [ "h27.52", "v-96", "h-57.6" ] ],
-    [ "r4:1", "bb1:20t.e", "", [ "$bb" ] ],
-    [ "r4:2", "bb1:20b.i", "", [ "$bb" ] ],
-    [ "r3:1", "bb1:23t.e", "", [ "$bb" ] ],
-    [ "r3:2", "bb1:23b.i", "", [ "$bb" ] ],
-    [ "r2:1", "bb1:26t.e", "", [ "$bb" ] ],
-    [ "r2:2", "bb1:26b.i", "", [ "$bb" ] ],
-    [ "r1:1", "bb1:29t.e", "", [ "$bb" ] ],
-    [ "r1:2", "bb1:29b.i", "", [ "$bb" ] ],
     [ "led1:A", "bb1:20t.a", "", [ "$bb" ] ],
     [ "led1:C", "bb1:21t.a", "", [ "$bb" ] ],
     [ "led2:A", "bb1:23t.a", "", [ "$bb" ] ],
@@ -139,19 +131,22 @@
     [ "led3:C", "bb1:27t.a", "", [ "$bb" ] ],
     [ "led4:A", "bb1:29t.a", "", [ "$bb" ] ],
     [ "led4:C", "bb1:30t.a", "", [ "$bb" ] ],
-    [ "btn2:2.l", "bb1:tn.4", "", [ "$bb" ] ],
-    [ "btn2:1.r", "bb1:7t.a", "", [ "$bb" ] ],
-    [ "btn2:2.r", "bb1:5t.a", "", [ "$bb" ] ],
-    [ "btn4:1.l", "bb1:tn.12", "", [ "$bb" ] ],
-    [ "btn4:1.r", "bb1:15t.a", "", [ "$bb" ] ],
-    [ "btn4:2.r", "bb1:13t.a", "", [ "$bb" ] ],
-    [ "btn3:1.l", "bb1:tn.9", "", [ "$bb" ] ],
-    [ "btn3:2.l", "bb1:tn.7", "", [ "$bb" ] ],
-    [ "btn3:1.r", "bb1:11t.a", "", [ "$bb" ] ],
-    [ "btn3:2.r", "bb1:9t.a", "", [ "$bb" ] ],
-    [ "btn1:1.l", "bb1:tn.2", "", [ "$bb" ] ],
-    [ "btn1:1.r", "bb1:3t.a", "", [ "$bb" ] ],
-    [ "btn1:2.r", "bb1:1t.a", "", [ "$bb" ] ]
+    [ "r1:1", "bb1:29t.e", "", [ "$bb" ] ],
+    [ "r1:2", "bb1:29b.i", "", [ "$bb" ] ],
+    [ "r2:1", "bb1:26t.e", "", [ "$bb" ] ],
+    [ "r2:2", "bb1:26b.i", "", [ "$bb" ] ],
+    [ "r3:1", "bb1:23t.e", "", [ "$bb" ] ],
+    [ "r3:2", "bb1:23b.i", "", [ "$bb" ] ],
+    [ "r4:1", "bb1:20t.e", "", [ "$bb" ] ],
+    [ "r4:2", "bb1:20b.i", "", [ "$bb" ] ],
+    [ "btn3:1.r", "bb1:11t.b", "", [ "$bb" ] ],
+    [ "btn3:2.r", "bb1:9t.b", "", [ "$bb" ] ],
+    [ "btn2:1.r", "bb1:7t.b", "", [ "$bb" ] ],
+    [ "btn2:2.r", "bb1:5t.b", "", [ "$bb" ] ],
+    [ "btn1:1.r", "bb1:3t.b", "", [ "$bb" ] ],
+    [ "btn1:2.r", "bb1:1t.b", "", [ "$bb" ] ],
+    [ "btn4:1.r", "bb1:15t.b", "", [ "$bb" ] ],
+    [ "btn4:2.r", "bb1:13t.b", "", [ "$bb" ] ]
   ],
   "serialMonitor": { "convertEol": true, "display": "terminal" },
   "dependencies": {}

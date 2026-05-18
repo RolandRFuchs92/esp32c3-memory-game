@@ -7,12 +7,13 @@
 )]
 #![deny(clippy::large_stack_frames)]
 
-use embassy_executor::{Spawner};
-use embassy_time::{Duration, Timer};
+use embassy_executor::Spawner;
 use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
-use memory_game::game::{GameObject, IoLedMap, IoBtnMap};
-use esp_println::{println};
+use esp_println::println;
+use memory_game::game::{
+    build_button_inputs, button_task, GameObject, GpioIndex, IoBtnMap, IoLedMap,
+};
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {
@@ -30,9 +31,6 @@ esp_bootloader_esp_idf::esp_app_desc!();
 )]
 #[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
-    // generator version: 1.3.0
-    // generator parameters: --chip esp32c3 -o unstable-hal -o embassy -o wokwi -o neovim -o vscode
-
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let peripherals = esp_hal::init(config);
 
@@ -41,30 +39,24 @@ async fn main(spawner: Spawner) -> ! {
         esp_hal::interrupt::software::SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
     esp_rtos::start(timg0.timer0, sw_interrupt.software_interrupt0);
 
-    // TODO: Spawn some tasks
-    let mut game = GameObject::new(
-         IoLedMap {
-            red: peripherals.GPIO7,
-            green: peripherals.GPIO6,
-            blue: peripherals.GPIO5,
-            yellow: peripherals.GPIO4,
-        },
-        IoBtnMap {
-            red: peripherals.GPIO1,
-            green: peripherals.GPIO3,
-            blue: peripherals.GPIO2,
-            yellow: peripherals.GPIO8,
-        }
-    );
+    let [red_btn, green_btn, blue_btn, yellow_btn] = build_button_inputs(IoBtnMap {
+        red: peripherals.GPIO1,
+        green: peripherals.GPIO3,
+        blue: peripherals.GPIO2,
+        yellow: peripherals.GPIO8,
+    });
 
-    game.reset().await;
-    game.display_stage().await;
-    
-    spawner.spawn(game.handle_button_press(0));
+    spawner.spawn(button_task(red_btn, GpioIndex::Red).unwrap());
+    spawner.spawn(button_task(green_btn, GpioIndex::Green).unwrap());
+    spawner.spawn(button_task(blue_btn, GpioIndex::Blue).unwrap());
+    spawner.spawn(button_task(yellow_btn, GpioIndex::Yellow).unwrap());
 
-    loop {
-        Timer::after(Duration::from_secs(1)).await;
-    }
+    let mut game = GameObject::new(IoLedMap {
+        red: peripherals.GPIO7,
+        green: peripherals.GPIO6,
+        blue: peripherals.GPIO5,
+        yellow: peripherals.GPIO4,
+    });
 
-    // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.1.0/examples
+    game.run().await
 }
